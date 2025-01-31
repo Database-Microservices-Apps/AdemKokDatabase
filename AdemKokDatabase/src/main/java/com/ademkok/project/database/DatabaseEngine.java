@@ -1,4 +1,4 @@
-package com.ademkok.project.database.csv;
+package com.ademkok.project.database;
 
 import com.ademkok.project.database.csv.models.*;
 
