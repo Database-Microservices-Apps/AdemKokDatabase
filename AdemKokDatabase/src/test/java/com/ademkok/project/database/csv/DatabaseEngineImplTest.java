@@ -1,6 +1,8 @@
 package com.ademkok.project.database.csv;
 
 import com.ademkok.project.database.DatabaseEngine;
+import com.ademkok.project.database.csv.models.Row;
+import org.assertj.core.api.AbstractFileAssert;
 import org.assertj.core.util.Files;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,11 +12,13 @@ import java.io.File;
 import java.util.List;
 
 import static com.ademkok.project.database.csv.models.Column.stringColumn;
+import static com.ademkok.project.database.csv.models.Row.newRow;
 import static org.assertj.core.api.Assertions.assertThat;
 class DatabaseEngineImplTest {
 
     private String tempDir;
     private DatabaseEngine databaseEngine;
+    public static final String TEST_TABLE = "MY_TABLE";
 
     @BeforeEach
     void setUp() {
@@ -30,14 +34,44 @@ class DatabaseEngineImplTest {
 
     @Test
     void createTable() {
-        databaseEngine.createTable("Adem",
+        createTestTable();
+        assertThatFile()
+                .exists()
+                .hasContent("id,firstName,lastName");
+    }
+
+
+
+    @Test
+    void insertTable() {
+        createTestTable();
+
+        int rows = databaseEngine.insertIntoTable(TEST_TABLE, List.of(
+                newRow(List.of("1", "Ayten", "Kok")),
+                newRow(List.of("65", "Ad\"em", "Ko,,k"))
+        ));
+        
+        assertThat(rows).isEqualTo(2);
+
+        assertThatFile()
+                .exists()
+                .hasContent("""
+                        id,firstName,lastName
+                        "1","Ayten","Kok"
+                        "65","Ad\\"em","Ko,,k"
+                        """);
+    }
+
+    private AbstractFileAssert<?> assertThatFile() {
+        return assertThat(new File(tempDir + File.separatorChar + TEST_TABLE + ".csv"));
+    }
+
+    private void createTestTable() {
+        databaseEngine.createTable(TEST_TABLE,
                 List.of(
                         stringColumn("id"),
                         stringColumn("firstName"),
                         stringColumn("lastName")
                 ));
-        assertThat(new File(tempDir + File.separatorChar + "Adem.csv"))
-                .exists()
-                .hasContent("id,firstName,lastName");
     }
 }

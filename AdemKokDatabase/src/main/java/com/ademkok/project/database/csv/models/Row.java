@@ -12,5 +12,9 @@ public class Row {
     private final int id;
     private final List<String> fields;
 
+    public static Row newRow(List<String> fileds) {
+        return new Row(0, fileds);
+    }
+
     
 }

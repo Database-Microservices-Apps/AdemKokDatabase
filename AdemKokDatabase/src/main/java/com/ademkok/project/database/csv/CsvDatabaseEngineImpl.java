@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -23,61 +25,33 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
         verifyTableDoesNotExist(tableName);
         String tableFile = fileNameForTable(tableName);
 
-        try( BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(tableFile, true))) {
+        performActionInTable(tableName, true, bw ->{
 
-            String headerLine = columns.stream().map(column -> column.getName().trim())
-                            .collect(Collectors.joining(COMMA));
+            String headerLine = columns.stream()
+                    .map(column -> column.getName().trim())
+                    .collect(Collectors.joining(COMMA));
 
-            bufferedWriter.write(headerLine);
-            bufferedWriter.newLine();
-        } catch (IOException ex) {
-            throw new DatabaseException("Error when creating the file: "+ tableFile);
-        }
+            writeContent(bw, headerLine, tableName);
+        });
     }
-
-//    private void performActionInTable(String tableName, boolean append) {
-//        try( BufferedWriter bw = new BufferedWriter(new FileWriter(fileNameForTable(tableName), append))) {
-//
-//            String headerLine = columns.stream().map(column -> column.getName().trim())
-//                    .collect(Collectors.joining(COMMA));
-//
-//            bufferedWriter.write(headerLine);
-//            bufferedWriter.newLine();
-//        } catch (IOException ex) {
-//            throw new DatabaseException("Error when creating the file: "+ tableFile);
-//        }
-//    }
-
 
 
     @Override
     public int insertIntoTable(String tableName, List<Row> rows) {
         verifyTableExists(tableName);
-        
-        rows.stream()
+        return performActionInTable(tableName, true, bw -> {
+            rows.stream()
                 .map(Row::getFields)
-                .map(this::escapeCharacters);
-
-        return 0;
+                .map(this::escapeCharacters)
+                .forEach(line -> writeContent(bw, line, tableName));
+            return rows.size();
+        });
     }
 
-    private String escapeCharacters(List<String> values) {
-        return values.stream()
-                .map(CsvDatabaseEngineImpl::escapeDubleQuotes)
-                .collect(Collectors.joining(COMMA));
-    }
 
-    private static String escapeDubleQuotes(String s) {
-        String returnValues;
-        if(s.contains("\"")) {
-            returnValues = s.replaceAll("\"", "\\\\\"");
-        }else {
-            returnValues = s;
-        }
-    }
 
     @Override
-    public SearchResult selectFromTAble(String tableName, List<String> fields, List<Filter> filters, Order order) {
+    public SearchResult selectFromTable(String tableName, List<String> fields, List<Filter> filters, Order order) {
         return null;
     }
 
@@ -92,7 +66,7 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
     }
 
     @Override
-    public int updateTAble() {
+    public int updateTable() {
         return 0;
     }
 
@@ -119,5 +93,46 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
     private boolean tableExists(String tableName) {
         String tableFile = fileNameForTable(tableName);
         return  new File(tableFile).exists();
+    }
+
+    private void writeContent(BufferedWriter bw, String text, String tableName) {
+        try{
+            bw.write(text);
+            bw.newLine();
+        } catch (IOException ex) {
+            throw new DatabaseException("Unexpected error when writing content to file: "+ tableName);
+        }
+    }
+
+
+    private String escapeCharacters(List<String> values) {
+        return values.stream()
+                .map(CsvDatabaseEngineImpl::escapeDubleQuotes)
+                .collect(Collectors.joining(COMMA));
+    }
+
+    private static String escapeDubleQuotes(String s) {
+        String returnValues;
+        if(s.contains("\"")) {
+            returnValues = s.replaceAll("\"", "\\\\\"");
+        }else {
+            returnValues = s;
+        }
+        return "\"" + returnValues + "\"";
+    }
+
+    private void performActionInTable(String tableName, boolean append, Consumer<BufferedWriter> consumer) {
+        performActionInTable(tableName, append, bufferedWriter -> {
+            consumer.accept(bufferedWriter);
+            return 0;
+        });
+    }
+
+    private <T> T performActionInTable(String tableName, boolean append, Function<BufferedWriter, T> function) {
+        try( BufferedWriter bw = new BufferedWriter(new FileWriter(fileNameForTable(tableName), append))) {
+            return function.apply(bw);
+        } catch (IOException ex) {
+            throw new DatabaseException("Error when creating the file: "+ tableName);
+        }
     }
 }
