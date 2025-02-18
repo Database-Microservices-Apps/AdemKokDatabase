@@ -5,10 +5,8 @@ import com.ademkok.project.database.csv.models.*;
 import com.ademkok.project.database.exception.DatabaseException;
 import lombok.AllArgsConstructor;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -52,6 +50,35 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
 
     @Override
     public SearchResult selectFromTable(String tableName, List<String> fields, List<Filter> filters, Order order) {
+
+        TableData tableDate = readTableData(tableName);
+
+        return null;
+    }
+
+    private TableData readTableData(String tableName) {
+        verifyTableExists(tableName);
+
+        try( BufferedReader br = new BufferedReader(new FileReader(fileNameForTable(tableName)))) {
+
+            TableHeader header = parseHeader(br);
+        } catch (IOException ex) {
+            throw new DatabaseException("Error when reading file: "+ tableName);
+        }
+        return null;
+    }
+
+    private TableHeader parseHeader(BufferedReader br) throws IOException {
+        String line = br.readLine();
+        if(line == null || line.trim().length() == 0) {
+            throw new DatabaseException("Table file is empty");
+        }
+
+        List<Column> columns = Arrays.stream(line.split(COMMA))
+                .map(Column::stringColumn)
+                .toList();
+
+        // mit rows weiter
         return null;
     }
 
