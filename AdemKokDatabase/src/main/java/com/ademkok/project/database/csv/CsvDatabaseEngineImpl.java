@@ -6,6 +6,7 @@ import com.ademkok.project.database.exception.DatabaseException;
 import lombok.AllArgsConstructor;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -53,7 +54,7 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
 
         TableData tableDate = readTableData(tableName);
 
-        return null;
+        return new SearchResult(tableName, tableDate.getTableHeader().getColumns(), tableDate.getRows());
     }
 
     private TableData readTableData(String tableName) {
@@ -62,10 +63,45 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
         try( BufferedReader br = new BufferedReader(new FileReader(fileNameForTable(tableName)))) {
 
             TableHeader header = parseHeader(br);
+            List<Row> records = new ArrayList<>();
+
+            String line;
+            int rowId =1;
+            while((line = br.readLine()) != null) {
+                Row record = parseLine(rowId++, line);
+                records.add(record);
+            }
+
+            return new TableData(header, records);
         } catch (IOException ex) {
             throw new DatabaseException("Error when reading file: "+ tableName);
         }
-        return null;
+    }
+
+    private Row parseLine(int rowId, String line) {
+        List<String> values = new ArrayList<>();
+        StringBuilder currentValue = new StringBuilder();
+        boolean inQuotes = false;
+        boolean escapeNext = false;
+
+        for (char c : line.toCharArray()) {
+
+            if(escapeNext) {
+                currentValue.append(c);
+                escapeNext = false;
+            } else if (c == '\\') {
+                escapeNext =true;
+            } else if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                values.add(currentValue.toString());
+                currentValue.setLength(0);
+            } else {
+                currentValue.append(c);
+            }
+        }
+
+        return new Row(rowId, values);
     }
 
     private TableHeader parseHeader(BufferedReader br) throws IOException {
@@ -77,9 +113,7 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
         List<Column> columns = Arrays.stream(line.split(COMMA))
                 .map(Column::stringColumn)
                 .toList();
-
-        // mit rows weiter
-        return null;
+        return new TableHeader(columns);
     }
 
     @Override

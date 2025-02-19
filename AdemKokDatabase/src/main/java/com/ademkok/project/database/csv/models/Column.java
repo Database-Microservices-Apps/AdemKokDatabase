@@ -1,10 +1,11 @@
 package com.ademkok.project.database.csv.models;
 
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 
 @AllArgsConstructor
-@Getter
+@Data
 public class Column {
 
     public static final String STRING_COLUMN = "STRING";
