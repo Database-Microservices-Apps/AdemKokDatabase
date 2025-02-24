@@ -1,6 +1,7 @@
 package com.ademkok.project.database.csv;
 
 import com.ademkok.project.database.DatabaseEngine;
+import com.ademkok.project.database.csv.models.Filter;
 import com.ademkok.project.database.csv.models.Row;
 import com.ademkok.project.database.csv.models.SearchResult;
 import org.assertj.core.api.AbstractFileAssert;
@@ -41,8 +42,6 @@ class DatabaseEngineImplTest {
                 .hasContent("id,firstName,lastName");
     }
 
-
-
     @Test
     void insertTable() {
         createTestTable();
@@ -68,20 +67,26 @@ class DatabaseEngineImplTest {
         createTestTable();
         databaseEngine.insertIntoTable(TEST_TABLE, List.of(
                 Row.newRow(List.of("1", "Ayten", "Kok")),
+                Row.newRow(List.of("3", "Metin", "Kara")),
+                Row.newRow(List.of("1", "Sema", "Kara")),
                 Row.newRow(List.of("65", "Ad\"em", "Ko,,k"))
         ));
 
-        SearchResult searchResult = databaseEngine.selectFromTable(TEST_TABLE, List.of(), List.of(), null);
+        SearchResult searchResult = databaseEngine.selectFromTable(
+                TEST_TABLE,
+                List.of("firstName", "lastName"),
+                List.of(new Filter("id", "1")),
+                null);
         assertThat(searchResult.getColumns()).containsExactly(
-            stringColumn("id"),
+                stringColumn("id"),
                 stringColumn("firstName"),
                 stringColumn("lastName")
         );
         assertThat(searchResult.getRows()).containsExactly(
-          new Row(1, List.of("1","Ayten","Kok")),
-                new Row(2, List.of("65","Ad\"em","Ko,,k"))
+                new Row(1, List.of("Ayten","Kok")),
+                new Row(3, List.of("Sema", "Kara"))
         );
-        //TODO: muss prufen werden,
+
     }
 
     private AbstractFileAssert<?> assertThatFile() {

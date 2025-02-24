@@ -9,6 +9,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -54,7 +55,36 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
 
         TableData tableDate = readTableData(tableName);
 
-        return new SearchResult(tableName, tableDate.getTableHeader().getColumns(), tableDate.getRows());
+        List<Row> rows = tableDate.getRows();
+
+        List<Row> foundRows =  rows.stream()
+                .filter(row -> applyFilters(row, filters, tableDate.getTableHeader()))
+                .map(row -> selectFileds(row, fields, tableDate.getTableHeader()))
+                .toList();
+
+        return new SearchResult(tableName, tableDate.getTableHeader().getColumns(), foundRows);
+    }
+
+    private Row selectFileds(Row row, List<String> fields, TableHeader tableHeader) {
+        if(fields == null || fields.isEmpty()) {
+            return row;
+        } else {
+            List<String> rowFileds = fields.stream().map(
+                    field -> row.getFields().get(tableHeader.indexOfColumnWithName(field)))
+                    .toList();
+            return new Row(row.getId(), rowFileds);
+        }
+    }
+
+    private boolean applyFilters(Row row, List<Filter> filters, TableHeader header) {
+        if(filters == null || filters.isEmpty()) {
+            return true;
+        }
+        return filters.stream().allMatch(filter -> {
+           int columnIndex = header.indexOfColumnWithName(filter.getName());
+           String valueInRow = row.getFields().get(columnIndex);
+           return Objects.equals(valueInRow, filter.getValue());
+        });
     }
 
     private TableData readTableData(String tableName) {
@@ -68,6 +98,10 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
             String line;
             int rowId =1;
             while((line = br.readLine()) != null) {
+
+
+
+
                 Row record = parseLine(rowId++, line);
                 records.add(record);
             }
@@ -100,6 +134,8 @@ public class CsvDatabaseEngineImpl implements DatabaseEngine {
                 currentValue.append(c);
             }
         }
+
+        values.add(currentValue.toString());
 
         return new Row(rowId, values);
     }
